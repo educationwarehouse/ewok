@@ -1,6 +1,11 @@
+[build-system]
+# uv build doesn't support dynamic version yet
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
 [project]
 name = "ewok"
-version = "0.1.0"
 description = "Education Warehouse Octopus Kit - Extensible CLI framework with plugin support"
 readme = "README.md"
 authors = [
@@ -8,8 +13,16 @@ authors = [
     { name = "Remco Boerma", email = "remco.b@educationwarehouse.nl" },
 ]
 requires-python = ">=3.13"
+dynamic = ["version"]
 dependencies = []
 
-[build-system]
-requires = ["uv_build>=0.7.13,<0.8.0"]
-build-backend = "uv_build"
+[tool.hatch.version]
+path = "src/ewok/__about__.py"
+
+[tool.semantic_release]
+branch = "master"
+version_variable = "src/ewok/__about__.py:__version__"
+change_log = "CHANGELOG.md"
+upload_to_repository = false
+upload_to_release = false
+build_command = "uv build"
