@@ -8,11 +8,11 @@
 import inspect
 import typing
 import warnings
-from typing import Any, Callable, Iterable, List, Optional
+from typing import Any, Callable, Iterable, Optional
 
 from docstring_parser import parse as parse_docstring
 from fabric import Connection
-from invoke import Argument
+from invoke import Argument, Collection
 from invoke.context import Context
 from invoke.tasks import Task as InvokeTask
 from invoke.tasks import task as invoke_task
@@ -63,7 +63,7 @@ class TaskCallable(typing.Protocol):
     ]: ...
 
 
-class ImprovedTask(InvokeTask[TaskCallable]):
+class Task(InvokeTask[TaskCallable]):
     """
     Improved version of Invoke Task where you can set custom flags for command line arguments.
     This allows you to specify aliases, rename (e.g. --json for 'as_json')  and custom short flags (--exclude = -x)
@@ -139,7 +139,7 @@ class ImprovedTask(InvokeTask[TaskCallable]):
 
     def get_arguments(
         self, ignore_unknown_help: Optional[bool] = None
-    ) -> List[Argument]:
+    ) -> list[Argument]:
         return super().get_arguments(ignore_unknown_help=True)
 
     def _execute_subtask(self, ctx: Context, task: TaskFn, *args, **kwargs):
@@ -171,6 +171,17 @@ class ImprovedTask(InvokeTask[TaskCallable]):
         # Call the task with the prepared arguments
         return task(*task_args, **task_kwargs)
 
+    def find_task_across_namespaces(self, ctx: Context) -> dict[str, typing.Self]:
+        app = ctx.config.app
+
+        collection: Collection = app.namespace
+
+        return {
+            ns.name: task
+            for ns in collection.collections.values()
+            if (task := ns.tasks.get(self.name))
+        }
+
     def _run_hooks(self, ctx: Context, *args, **kwargs):
         """Run hooks for the current instance.
 
@@ -179,7 +190,7 @@ class ImprovedTask(InvokeTask[TaskCallable]):
             *args: Positional arguments for the hooks.
             **kwargs: Keyword arguments for the hooks.
         """
-        for namespace, task in find_task_across_namespaces(self.name).items():
+        for namespace, task in self.find_task_across_namespaces(ctx).items():
             if task is not self and getattr(task, "hookable", False) is not False:
                 try:
                     subresult = self._execute_subtask(ctx, task, *args, **kwargs)
@@ -225,19 +236,7 @@ class ImprovedTask(InvokeTask[TaskCallable]):
         return ctx["result"]
 
 
-def find_task_across_namespaces(name: str) -> dict[str, ImprovedTask]:
-    from .cli import collection
-
-    return {
-        ns.name: task
-        for ns in collection.collections.values()
-        if (task := ns.tasks.get(name))
-    }
-
-
-def improved_task(
-    *fn: Optional[TaskCallable], **options: Unpack[TaskOptions]
-) -> TaskCallable:
+def task(*fn: Optional[TaskCallable], **options: Unpack[TaskOptions]) -> TaskCallable:
     """
     Marks wrapped callable object as a valid Invoke task.
 
@@ -297,7 +296,7 @@ def improved_task(
     ``pre`` kwarg for convenience's sake. (It is an error to give both
     ``*args`` and ``pre`` at the same time.)
     """
-    return invoke_task(*fn, **options, klass=ImprovedTask)
+    return invoke_task(*fn, **options, klass=Task)
 
 
-__all__ = ["ImprovedTask", "improved_task"]
+__all__ = ["Task", "task"]

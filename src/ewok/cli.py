@@ -2,28 +2,25 @@ import importlib
 import importlib.util
 import os
 import sys
-import typing
+import typing as t
 import warnings
 from importlib.metadata import entry_points
 from pathlib import Path
+from types import ModuleType as Module
 
 from fabric import Config, Executor
 from fabric.main import Fab
 from invoke import Argument, Call, Collection
+from invoke.loader import Loader
 from termcolor import cprint
-
-from . import tasks  # todo: should also be defined in child package
-from .__about__ import __version__
 
 # https://docs.pyinvoke.org/en/stable/concepts/library.html
 
-collection = Collection.from_module(tasks)
-
 
 ### extra's tasks ###
-def include_plugins() -> None:
+def include_plugins(collection: Collection, entrypoint: str) -> None:
     try:
-        discovered_plugins = entry_points(group="edwh.tasks")
+        discovered_plugins = entry_points(group=entrypoint)
     except Exception as e:
         warnings.warn(f"Error locating plugins: {e}")
         return
@@ -33,7 +30,7 @@ def include_plugins() -> None:
             try:
                 plugin_module = plugin.load()
             except Exception as e:
-                print(f"Error loading plugin {plugin.name}: {e}")
+                print(f"Error loading plugin {plugin.name}: {e}", file=sys.stderr)
                 continue
 
             plugin_collection = Collection.from_module(plugin_module)
@@ -43,9 +40,12 @@ def include_plugins() -> None:
 
 
 ### included 'plugins' in edwh/local_tasks ###
-def include_packaged_plugins() -> None:
-    from . import local_tasks
-
+def include_packaged_plugins(
+    collection: Collection,
+    package: str,
+    local_tasks: Module,
+    selection: t.Iterable[str] = None,
+) -> None:
     # should somehow be defined in the child package
 
     tasks_dir = Path(local_tasks.__file__).parent
@@ -53,14 +53,20 @@ def include_packaged_plugins() -> None:
     discovered_plugins = [
         _.removesuffix(".py") for _ in discovered_plugins if not _.startswith("_")
     ]
+    if selection is not None:
+        discovered_plugins = [_ for _ in discovered_plugins if _ in selection]
+
     for plugin in discovered_plugins:
-        module = importlib.import_module(f".local_tasks.{plugin}", package="edwh")
+        # module = importlib.import_module(f".local_tasks.{plugin}", package=package)
+        module = importlib.import_module(
+            f"{local_tasks.__package__}.{plugin}", package=package
+        )
         plugin_collection = Collection.from_module(module)
         collection.add_collection(plugin_collection, plugin)
 
 
 ### tasks in user cwd ###
-def include_cwd_tasks() -> None:
+def include_cwd_tasks(collection: Collection) -> None:
     old_path = sys.path[:]
 
     for _path in [".", "..", "../.."]:
@@ -84,7 +90,7 @@ def include_cwd_tasks() -> None:
     sys.path = old_path
 
 
-def collection_from_abs_path(path: str, name: str) -> typing.Optional[Collection]:
+def collection_from_abs_path(path: str, name: str) -> t.Optional[Collection]:
     try:
         if spec := importlib.util.spec_from_file_location(name, path):
             module = importlib.util.module_from_spec(spec)
@@ -103,8 +109,7 @@ def collection_from_abs_path(path: str, name: str) -> typing.Optional[Collection
 
 
 ### custom ~/.config/edwh/tasks.py and ~/.config/edwh/namespace.tasks.py commands
-def include_personal_tasks() -> None:
-    config = Path.home() / ".config/edwh"
+def include_personal_tasks(collection: Collection, config: Path) -> None:
     config.mkdir(exist_ok=True, parents=True)
 
     # tasks.py - special case, add to global namespace!
@@ -129,7 +134,7 @@ def include_personal_tasks() -> None:
             collection.add_collection(plugin_collection, prefix)
 
 
-def include_other_project_tasks() -> None:
+def include_other_project_tasks(collection: Collection) -> None:
     for file in Path().glob("*.tasks.py"):
         namespace = file.stem.split(".")[0]
 
@@ -149,14 +154,14 @@ def include_other_project_tasks() -> None:
         collection.add_collection(plugin_collection, namespace)
 
 
-class CustomExecutor(Executor):  # type: ignore
+class EwokExecutor(Executor):  # type: ignore
     def expand_calls(self, calls: list[Call], apply_hosts: bool = True) -> list[Call]:
         # always apply hosts (so pre and post are also executed remotely)
         apply_hosts = True
-        return typing.cast(list[Call], super().expand_calls(calls, apply_hosts))
+        return t.cast(list[Call], super().expand_calls(calls, apply_hosts))
 
 
-class ImprovedFab(Fab):
+class App(Fab):
     # = Program
 
     # Define all the no-flags in one place for reuse
@@ -166,7 +171,73 @@ class ImprovedFab(Fab):
         "no-packaged": "Skip importing packaged plugins from edwh/local_tasks",
         "no-personal": "Skip importing personal tasks from ~/.config/edwh",
         "no-project": "Skip importing *.tasks.py files from the current project",
+        "no-ewok": "Skip importing ewok builtin namespaces (plugin.)",
     }
+
+    _registry: dict[str, t.Self] = {}
+
+    def __init__(
+        self,
+        # from invoke, required:
+        name: str,
+        version: str,
+        core_module: Module | Collection,
+        # from ewok, optional:
+        extra_modules: t.Iterable[Module] = (),
+        plugin_entrypoint: str | t.Iterable[str] | None = (),
+        config_dir: str | Path | None = "",
+        include_project: bool = True,
+        include_local: bool = True,
+        ewok_modules: bool | t.Iterable[str] = True,
+        # from invoke, optional:
+        binary: t.Optional[str] = None,
+        loader_class: t.Optional[t.Type[Loader]] = None,
+        binary_names: t.Optional[list[str]] = None,
+        # fron invoke, dangerous to overwrite because of custom logic:
+        config_class: t.Optional[t.Type[Config]] = None,
+        executor_class: t.Optional[t.Type[Executor]] = None,
+    ):
+        super().__init__(
+            version=version,
+            executor_class=executor_class or EwokExecutor,
+            config_class=config_class or EwokConfig,
+            namespace=core_module
+            if isinstance(core_module, Collection)
+            else Collection.from_module(core_module),
+            name=name,
+            binary=binary,
+            loader_class=loader_class,
+            binary_names=binary_names,
+        )
+
+        self._registry[self.name] = self
+
+        self.extra_modules = extra_modules
+
+        if plugin_entrypoint is None:
+            self.plugin_entrypoints = ()
+        elif not plugin_entrypoint:
+            # empty but not None, default to 'name'
+            self.plugin_entrypoints = [name]
+        else:
+            self.plugin_entrypoints = (
+                [plugin_entrypoint]
+                if isinstance(plugin_entrypoint, str)
+                else plugin_entrypoint
+            )
+
+        if config_dir is None:
+            self.config_dir = None
+        else:
+            self.config_dir = Path.home() / ".config" / (config_dir or name)
+
+        self.include_project = include_project
+        self.include_local = include_local
+        self.ewok_modules = ewok_modules
+
+    def create_config(self):
+        super().create_config()
+        self.config.app = self
 
     def core_args(self):
         return super().core_args() + [
@@ -185,29 +256,46 @@ class ImprovedFab(Fab):
         return super().print_task_help(name)
 
     def parse_collection(self):
-        import_local = not self.args["no-local"].value
-        import_plugins = not self.args["no-plugins"].value
-        import_packaged = not self.args["no-packaged"].value
-        import_personal = not self.args["no-personal"].value
-        import_project = not self.args["no-project"].value
+        import_ewok = self.ewok_modules and not self.args["no-ewok"].value
+        import_local = self.include_local and not self.args["no-local"].value
+        import_plugins = self.plugin_entrypoints and not self.args["no-plugins"].value
+        import_packaged = self.extra_modules and not self.args["no-packaged"].value
+        import_project = self.include_project and not self.args["no-project"].value
+        import_personal = self.config_dir and not self.args["no-personal"].value
+
+        if import_ewok:
+            from . import local_tasks
+
+            # None means all, otherwise the options are filtered.
+            selection = (
+                None if isinstance(self.ewok_modules, bool) else self.ewok_modules
+            )
+            include_packaged_plugins(self.namespace, "ewok", local_tasks, selection)
 
         if import_plugins:
-            include_plugins()  # pip plugins
+            # pip plugins
+            for entrypoint in self.plugin_entrypoints:
+                include_plugins(self.namespace, entrypoint)
+
         if import_packaged:
-            include_packaged_plugins()  # from src.edwh.local_tasks
+            # from src.edwh.local_tasks
+            for module in self.extra_modules:
+                include_packaged_plugins(self.namespace, self.name, module)
+
         if import_local:
-            include_cwd_tasks()  # from tasks.py and ../tasks.py etc.
+            # from tasks.py and ../tasks.py etc.
+            include_cwd_tasks(self.namespace)
+
         if import_project:
-            include_other_project_tasks()  # *.tasks.py in current project
+            # *.tasks.py in current project
+            include_other_project_tasks(self.namespace)
+
         if import_personal:
-            include_personal_tasks()
+            # ~/.config/edwh/personal.py
+            include_personal_tasks(self.namespace, self.config_dir)
+
         return super().parse_collection()
 
 
-# ExtendableFab is not used right now
-program = ImprovedFab(
-    executor_class=CustomExecutor,
-    config_class=Config,
-    namespace=collection,
-    version=__version__,
-)
+class EwokConfig(Config):
+    app: App
