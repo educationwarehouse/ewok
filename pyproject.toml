@@ -1,0 +1,14 @@
+[project]
+name = "ewok"
+version = "0.1.0"
+description = "Education Warehouse Octopus Kit - Extensible CLI framework with plugin support"
+readme = "README.md"
+authors = [
+    { name = "Robin van der Noord", email = "robinvandernoord@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.7.13,<0.8.0"]
+build-backend = "uv_build"
