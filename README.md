@@ -20,10 +20,10 @@ Follow these steps to create a basic Ewok-powered CLI.
 
 ```
 
-my\_project/
+my_project/
 ├── src/
-│   └── my\_package/
-│       ├── **init**.py
+│   └── my_package/
+│       ├── __init__.py
 │       └── tasks.py
 ├── pyproject.toml
 
@@ -50,6 +50,7 @@ app = App(
 ```python
 # src/my_package/tasks.py
 from ewok import task, Context
+# you can also import Context from invoke instead; ewok.Context is an alias
 
 
 @task
@@ -153,8 +154,8 @@ Ewok supports plugin discovery via Python entry points.
 2. In the plugin’s `pyproject.toml`:
 
 ```toml
-[project.entry-points.myapp]
-demo = "my_plugin.tasks"
+[project.entry-points.myapp] # 'myapp' matches your app name
+demo = "my_plugin.tasks"     # 'demo' becomes the namespace
 ```
 
 This exposes the plugin’s tasks as `demo.taskname`.
