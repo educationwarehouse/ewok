@@ -4,7 +4,8 @@ version = "0.1.0"
 description = "Education Warehouse Octopus Kit - Extensible CLI framework with plugin support"
 readme = "README.md"
 authors = [
-    { name = "Robin van der Noord", email = "robinvandernoord@gmail.com" }
+    { name = "Robin van der Noord", email = "robin.vdn@educationwarehouse.nl" },
+    { name = "Remco Boerma", email = "remco.b@educationwarehouse.nl" },
 ]
 requires-python = ">=3.13"
 dependencies = []
