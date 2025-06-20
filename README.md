@@ -2,172 +2,235 @@
 
 ![Ewok Logo](https://github.com/educationwarehouse/ewok/blob/master/docs/logo.png?raw=true)
 
-
 [![PyPI version](https://img.shields.io/pypi/v/ewok.svg)](https://pypi.org/project/ewok/)
 [![Python versions](https://img.shields.io/pypi/pyversions/ewok.svg)](https://pypi.org/project/ewok/)
-[![License](https://img.shields.io/pypi/l/ewok.svg)](https://github.com/educationwarehouse/ewok/blob/main/LICENSE)
+[![License](https://img.shields.io/pypi/l/ewok.svg)](https://github.com/educationwarehouse/ewok/blob/main/LICENSE.txt)
 
-Ewok (Education Warehouse Octopus Kit) is a powerful CLI framework built on top of [Invoke](https://www.pyinvoke.org/) and [Fabric](https://www.fabfile.org/) that extends their capabilities with additional features for composable command-line tools.
+**Ewok** (Education Warehouse Octopus Kit) is a powerful CLI framework built on top
+of [Invoke](https://www.pyinvoke.org/) and [Fabric](https://www.fabfile.org/). It extends them with features for
+plugin-based, composable command-line tools.
+
+---
+
+## Quick Start
+
+Follow these steps to create a basic Ewok-powered CLI.
+
+### 1. Example Project structure
+
+```
+
+my\_project/
+├── src/
+│   └── my\_package/
+│       ├── **init**.py
+│       └── tasks.py
+├── pyproject.toml
+
+````
+
+You can merge your CLI into `__init__.py` for simplicity.
+
+### 2. Define your Ewok app
+
+```python
+# src/my_package/__init__.py
+from ewok import App
+from . import tasks
+
+app = App(
+    name="myapp",
+    version="0.1.0",
+    core_module=tasks,
+)
+````
+
+### 3. Define a task
+
+```python
+# src/my_package/tasks.py
+from ewok import task, Context
+
+
+@task
+def hello(c: Context, name: str = "world"):
+    """Print a friendly greeting"""
+    print(f"Hello, {name}!")
+```
+
+### 4. Configure `pyproject.toml`
+
+```toml
+[project]
+name = "my-project"
+version = "0.1.0"
+dependencies = [
+    "ewok>=0.1.0",
+    # other dependencies...
+]
+
+[project.scripts]
+myapp = "my_package:app"
+```
+
+> `myapp` will be installed as an executable that runs the `app` object.
+
+### 5. Install in development mode
+
+```bash
+#  The `-e` flag performs an editable install — useful while developing.
+uv pip install -e .
+```
+
+Then try your CLI:
+
+```bash
+myapp hello --name Alice
+```
+
+```
+Hello, Alice!
+```
+
+---
 
 ## Features
 
-- **Multi-source Command Integration**: Like an octopus with many arms, Ewok pulls in commands from multiple sources:
-  - Core commands from your main package
-  - Plugin commands with their own namespaces
-  - Machine-specific commands from `~/.config` directories
-  - Project-specific commands from a project's `tasks.py` (namespaced with `local.`)
-  - Extra namespaced project-specific commands in `namespace.tasks.py`
+* **Multi-source Task Integration**:
 
-- **Plugin System**: Easily extend functionality through a plugin architecture
-- **Namespace Management**: Organize commands into logical namespaces
-- **Configuration Handling**: Manage application configuration across different locations
-- **Task Discovery**: Automatically discover and load tasks from various sources
+    * Core tasks from your package
+    * Plugin tasks via entry points (namespaced)
+    * Personal tasks from `~/.config/<name>/tasks.py`
+    * Project-local `tasks.py` (namespaced as `local.`)
+    * Extra namespaced modules like `dev.tasks.py` → `dev.taskname`
 
-## Installation
-```bash
-pip install ewok
-```
-## Quick Start
+* **Plugin System**: Discover and load tasks from external packages
 
-Here's a minimal example of creating an Ewok application:
-```python
-import ewok
-from . import tasks
+* **Flexible Namespacing**: Mix-and-match functionality per project, plugin, and personal
 
-app = ewok.App(
-    "myapp",
-    version="0.1.0",
-    core_module=tasks
-)
+* **Invoke/Fabric Compatible**: Supports all base task features
 
-if __name__ == "__main__":
-    app.run()
-```
+---
+
 ## Creating an Ewok App
 
-The `App` class is the main entry point for creating an Ewok application. It accepts the following parameters:
+Ewok’s `App` class wraps and extends Invoke’s CLI system.
 
-### Required Parameters
+### Ewok-specific arguments
 
-- `name`: The name of your application
-- `version`: The version of your application
-- `core_module`: The module containing your core tasks
+These options extend the default behavior of Invoke/Fabric:
 
-### Optional Parameters
+| Parameter           | Description                                                           | Default            |
+|---------------------|-----------------------------------------------------------------------|--------------------|
+| `name`              | Name of your CLI tool (used in help/version)                          | **Required**       |
+| `version`           | App version string                                                    | **Required**       |
+| `core_module`       | Your main task module                                                 | **Required**       |
+| `extra_modules`     | Tuple of additional task modules (each auto-namespaced)               | `()`               |
+| `plugin_entrypoint` | Entry point group(s) for plugin discovery                             | `name`             |
+| `config_dir`        | Where to look for personal tasks (e.g. `~/.config/<name>`)            | `~/.config/{name}` |
+| `include_project`   | Load project-specific `*.tasks.py` modules                            | `True`             |
+| `include_local`     | Load `tasks.py` from the current directory (under `local.` namespace) | `True`             |
+| `ewok_modules`      | Include Ewok's own internal modules (not in use yet)                  | `True`             |
 
-- `extra_modules`: Additional modules containing tasks (default: `()`)
-- `plugin_entrypoint`: Entry point(s) for discovering plugins (default: same as `name`)
-- `config_dir`: Directory for user-specific configuration (default: `~/.config/{name}`)
-- `include_project`: Whether to include project-specific tasks (default: `True`)
-- `include_local`: Whether to include local tasks from `tasks.py` (default: `True`)
-- `ewok_modules`: Whether to include Ewok built-in modules (default: `True`)
+### Ewok extensions to `@task()`
 
-### Example
+In addition to the standard `@task()` parameters from Invoke/Fabric, Ewok supports:
+
+| Parameter  | Type                   | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+|------------|------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `flags`    | `dict[str, list[str]]` | Adds extra CLI flags for boolean-style behavior. Example:<br> `@task(flags={'exclude': ['--exclude', '-x'], 'as_json': ['--json']})` enables calling your task like:<br> `myapp mytask --exclude --json`.                                                                                                                                                                                                                                                                              |
+| `hookable` | `Optional[bool]`       | Controls whether the task can participate in "hook" chaining behavior:<ul><li>`True` → This is a *core* task that can trigger other tasks with the same name (e.g., from plugins or local modules) **after** it runs.</li><li>`False` → This task should *not* be hooked, even if another with the same name exists. Typically used in plugins or local overrides.</li><li>`None` (default) → Default behavior: core tasks don't hook; plugin/local tasks **can** be hooked.</li></ul> |
+
+---
+
+## Plugin System
+
+Ewok supports plugin discovery via Python entry points.
+
+### Example: Add a plugin
+
+1. Create a plugin package with its own `tasks.py`.
+2. In the plugin’s `pyproject.toml`:
+
+```toml
+[project.entry-points.myapp]
+demo = "my_plugin.tasks"
+```
+
+This exposes the plugin’s tasks as `demo.taskname`.
+
+### Discovering under multiple entry point names
+
 ```python
+app = App(
+    name="myapp",
+    version="1.0.0",
+    core_module=tasks,
+    plugin_entrypoint=("myapp", "myapp.plugins"),
+)
+```
+
+---
+
+## Command Organization
+
+Task sources and their namespaces:
+
+| Source                      | Example Call           | Namespace |
+|-----------------------------|------------------------|-----------|
+| Core task module            | `myapp hello`          | *global*  |
+| Plugin via entry point      | `myapp demo.taskname`  | `demo.`   |
+| Project-local `tasks.py`    | `myapp local.taskname` | `local.`  |
+| Namespaced `dev.tasks.py`   | `myapp dev.taskname`   | `dev.`    |
+| Personal `~/.config/myapp/` | `myapp taskname`       | *global*  |
+
+---
+
+## CLI Flags
+
+Control which task sources are loaded at runtime:
+
+| Flag            | Description                                 |
+|-----------------|---------------------------------------------|
+| `--no-local`    | Skip `tasks.py` in the current directory    |
+| `--no-project`  | Skip namespaced `*.tasks.py` in the project |
+| `--no-personal` | Skip `~/.config/<name>/tasks.py`            |
+| `--no-plugins`  | Skip plugin discovery entirely              |
+| `--no-packaged` | Skip installed plugin packages              |
+| `--no-ewok`     | Skip Ewok’s own built-in modules            |
+
+---
+
+## Full Example
+
+```python
+# src/my_package/__init__.py
+from pathlib import Path
 from ewok import App
-from . import tasks, extra, slow  # from tasks.py, extra.py, slow.py
+from . import tasks, extra, slow
 from .__about__ import __version__
 
 app = App(
     name="my-app",
     version=__version__,
-    core_module=tasks,           # not namespaced
-    extra_modules=(extra, slow), # namespaced as `extra.` and `slow.`
-    plugin_entrypoint="myapp", # only if it differs from 'name', can also be multiple or None to disable
-    config_dir="myapp",        # only if it differs from 'name', can also be a Path or None to disable
-    include_project=True,      # to include project-specific tasks.py and <namespace>.tasks.py files
-    include_local=True,        # to include tasks.py in the local cwd and up your file tree (../tasks.py etc.)
-)
-
-if __name__ == "__main__":
-    app()
-```
-## Plugin System
-
-Ewok's plugin system allows you to extend your application with additional functionality. 
-Plugins are discovered through entry points defined in your project's setup configuration.
-
-### Defining a Plugin
-
-To create a plugin for an Ewok application, you need to:
-
-1. Create a Python package with your plugin's functionality
-2. Define an entry point in your `pyproject.toml` file
-
-#### Entry Point Format in `pyproject.toml`
-```
-toml
-[project.entry-points.your-app-name]
-plugin_namespace = "your_plugin_package.tasks"
-```
-For example, for the `my-app` tool defined above:
-```
-toml
-[project.entry-points.myapp]
-demo = "myapp_some_plugin.tasks"
-```
-In this example:
-- `myapp` is the plugin entrypoint of the `App()` instance
-- `demo` is the plugin's namespace (meaning all commands in the plugin are available as `demo.<somecommand>`)
-- `myapp_some_plugin.tasks` is the module path containing the plugin tasks
-
-### Multiple Entry Point Names
-
-You can define multiple entry point names for your application by providing a collection of names to the `plugin_entrypoint` parameter:
-```
-python
-app = App(
-    name="myapp",
-    version="1.0.0",
-    core_module=tasks,
-    plugin_entrypoint=("myapp", "myapp.plugins")
+    core_module=tasks,  # not namespaced
+    extra_modules=(extra, slow),  # namespaced as `extra.` and `slow.`
+    plugin_entrypoint=("my-app", "myapp_plugins"),
+    # only if it differs from 'name', can also be multiple or None to disable
+    config_dir=Path("~/custom-config/my-app"),  # only if it differs from 'name', can also be a Path or None to disable
+    include_project=True,  # to include project-specific tasks.py and <namespace>.tasks.py files
+    include_local=True,  # to include tasks.py in the local cwd and up your file tree (../tasks.py etc.)
 )
 ```
-This will look for plugins defined under both the `myapp` and `myapp.plugins` entry points.
 
-## Command Organization
+---
 
-Ewok organizes commands into namespaces:
+## Examples & Resources
 
-- **Global namespace**: Commands defined in your core module (-> no namespace)
-- **Plugin namespaces**: Commands from plugins (e.g., `demo.command`)
-- **Local namespace**: Commands from `tasks.py` in the current directory (e.g., `local.command`)
-- **Project namespaces**: Commands from `<namespace>.tasks.py` files (e.g., `<namespace>.command`)
+* 🧪 Minimal template: [ewok-example](https://github.com/educationwarehouse/ewok-example)
+* 🧰 Real-world usage: [edwh](https://github.com/educationwarehouse/edwh)
 
-## Example Implementations
-
-### Minimal
-
-For a minimal implementation and template repo, check out the [ewok-example](https://github.com/educationwarehouse/ewok-example) repository.
-
-### Real-World Usage
-
-Ewok is the foundation of the [edwh](https://github.com/educationwarehouse/edwh) tool, which has a comprehensive suite of plugins for various tasks.
-
-## Task Decorators
-
-Define tasks in your modules using the `@task` decorator:
-```python
-from ewok import task, Context
-
-@task
-def hello(c: Context, name: str = "world"):
-    """Say hello to someone"""
-    print(f"Hello, {name}!")
-```
-
-For more information, checkout the documentation of [Invoke](https://docs.pyinvoke.org/en/stable/concepts/invoking-tasks.html) and [Fabric](https://docs.fabfile.org/en/1.10/usage/tasks.html).
-
-## Command-Line Flags
-
-Ewok provides several core command-line flags to control which task sources are loaded:
-
-- `--no-local`: Skip importing `./tasks.py`
-- `--no-plugins`: Skip importing plugins from entry points
-- `--no-packaged`: Skip importing packaged plugins
-- `--no-personal`: Skip importing personal tasks from config directory
-- `--no-project`: Skip importing `*.tasks.py` files from the current project
-- `--no-ewok`: Skip importing ewok built-in namespaces
+---
 
 ## License
 
