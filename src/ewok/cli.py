@@ -44,7 +44,7 @@ def include_packaged_plugins(
     collection: Collection,
     package: str,
     local_tasks: Module,
-    selection: t.Iterable[str] = None,
+    selection: t.Collection[str] = None,
 ) -> None:
     # should somehow be defined in the child package
 
@@ -174,8 +174,6 @@ class App(Fab):
         "no-ewok": "Skip importing ewok builtin namespaces (plugin.)",
     }
 
-    _registry: dict[str, t.Self] = {}
-
     def __init__(
         self,
         # from invoke, required:
@@ -183,12 +181,12 @@ class App(Fab):
         version: str,
         core_module: Module | Collection,
         # from ewok, optional:
-        extra_modules: t.Iterable[Module] = (),
-        plugin_entrypoint: str | t.Iterable[str] | None = (),
+        extra_modules: t.Collection[Module] = (),
+        plugin_entrypoint: str | t.Collection[str] | None = (),
         config_dir: str | Path | None = "",
         include_project: bool = True,
         include_local: bool = True,
-        ewok_modules: bool | t.Iterable[str] = True,
+        ewok_modules: bool | t.Collection[str] = True,
         # from invoke, optional:
         binary: t.Optional[str] = None,
         loader_class: t.Optional[t.Type[Loader]] = None,
@@ -210,8 +208,6 @@ class App(Fab):
             binary_names=binary_names,
         )
 
-        self._registry[self.name] = self
-
         self.extra_modules = extra_modules
 
         if plugin_entrypoint is None:
@@ -228,6 +224,8 @@ class App(Fab):
 
         if config_dir is None:
             self.config_dir = None
+        elif isinstance(config_dir, Path):
+            self.config_dir = config_dir
         else:
             self.config_dir = Path.home() / ".config" / (config_dir or name)
 
@@ -296,6 +294,18 @@ class App(Fab):
 
         return super().parse_collection()
 
+    def __call__(self, argv: t.Optional[list[str]] = None, exit: bool = True) -> None:
+        return self.run(argv=argv, exit=exit)
+
+    def __repr__(self):
+        plugin_info = f", plugin entrypoints: {self.plugin_entrypoints}" if self.plugin_entrypoints else ""
+        modules_info = f", extra modules: {len(self.extra_modules)}" if self.extra_modules else ""
+        config_info = f", config dir: {self.config_dir}" if self.config_dir else ""
+        project_info = f", include project: {self.include_project}"
+        local_info = f", include local: {self.include_local}"
+        ewok_info = f", ewok modules: {self.ewok_modules}"
+
+        return f"<App '{self.name}' v{self.version}{plugin_info}{modules_info}{config_info}{project_info}{local_info}{ewok_info}>"
 
 class EwokConfig(Config):
     app: App
