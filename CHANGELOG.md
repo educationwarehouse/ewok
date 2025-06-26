@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.0 (2025-06-26)
+
+### Feature
+
+* Helper functions to find namespace/task by name via ctx ([`01cb185`](https://github.com/educationwarehouse/ewok/commit/01cb185a3014e5f9cda387a23e69e6890fefdb5d))
+
 ## v0.2.0 (2025-06-20)
 
 ### Fix
