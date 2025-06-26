@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.1 (2025-06-26)
+
+### Fix
+
+* Also export new functions ([`0e82102`](https://github.com/educationwarehouse/ewok/commit/0e82102a085e681445ee2622ffcb466798a790b3))
+
 ## v0.3.0 (2025-06-26)
 
 ### Feature
