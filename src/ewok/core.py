@@ -330,6 +330,3 @@ def task(*fn: Optional[TaskCallable], **options: Unpack[TaskOptions]) -> TaskCal
     ``*args`` and ``pre`` at the same time.)
     """
     return invoke_task(*fn, **options, klass=Task)
-
-
-__all__ = ["Task", "task"]
