@@ -298,14 +298,21 @@ class App(Fab):
         return self.run(argv=argv, exit=exit)
 
     def __repr__(self):
-        plugin_info = f", plugin entrypoints: {self.plugin_entrypoints}" if self.plugin_entrypoints else ""
-        modules_info = f", extra modules: {len(self.extra_modules)}" if self.extra_modules else ""
+        plugin_info = (
+            f", plugin entrypoints: {self.plugin_entrypoints}"
+            if self.plugin_entrypoints
+            else ""
+        )
+        modules_info = (
+            f", extra modules: {len(self.extra_modules)}" if self.extra_modules else ""
+        )
         config_info = f", config dir: {self.config_dir}" if self.config_dir else ""
         project_info = f", include project: {self.include_project}"
         local_info = f", include local: {self.include_local}"
         ewok_info = f", ewok modules: {self.ewok_modules}"
 
         return f"<App '{self.name}' v{self.version}{plugin_info}{modules_info}{config_info}{project_info}{local_info}{ewok_info}>"
+
 
 class EwokConfig(Config):
     app: App

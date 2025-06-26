@@ -63,6 +63,43 @@ class TaskCallable(typing.Protocol):
     ]: ...
 
 
+def tasks(ctx: Context) -> Collection:
+    """
+    Provides functionality to retrieve a collection of tasks associated with the
+    application namespace from the given context. The function extracts the
+    namespace details from the application configuration bound to the context
+    and returns it.
+    """
+    app = ctx.config.app
+
+    return app.namespace
+
+
+def namespaces(ctx: Context):
+    """
+    Retrieve and return the namespace collections.
+
+    This function takes a context object, typically used to manage the execution
+    environment or configuration in a task management system. It retrieves a
+    collection of tasks and returns the associated namespace collections.
+    """
+    collection = tasks(ctx)
+
+    return collection.collections
+
+
+def find_namespace(ctx: Context, about: str) -> Collection | None:
+    """
+    Finds and retrieves a namespace given a context and a specific identifier.
+
+    This function looks up a namespace in the given context using the provided
+    identifier. If the identifier is not found in the available namespaces,
+    the function returns None.
+    """
+
+    return namespaces(ctx).get(about)
+
+
 class Task(InvokeTask[TaskCallable]):
     """
     Improved version of Invoke Task where you can set custom flags for command line arguments.
@@ -172,13 +209,9 @@ class Task(InvokeTask[TaskCallable]):
         return task(*task_args, **task_kwargs)
 
     def find_task_across_namespaces(self, ctx: Context) -> dict[str, typing.Self]:
-        app = ctx.config.app
-
-        collection: Collection = app.namespace
-
         return {
             ns.name: task
-            for ns in collection.collections.values()
+            for ns in namespaces(ctx).values()
             if (task := ns.tasks.get(self.name))
         }
 
