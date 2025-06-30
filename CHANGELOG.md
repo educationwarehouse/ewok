@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.2 (2025-06-30)
+
+### Fix
+
+* Support Python 3.12+ (which introduced the `type` keyword) ([`c93970f`](https://github.com/educationwarehouse/ewok/commit/c93970f1f97b13d790512cf76cc2f365195ea74f))
+
 ## v0.3.1 (2025-06-26)
 
 ### Fix
