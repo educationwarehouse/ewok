@@ -26,7 +26,7 @@ def task_with_warning(*alternatives: str):
     def wrapper(*a, **kw):
         stack = traceback.extract_stack(limit=2)
         cprint(
-            "WARN: invoke.task used instead of ewok.task; This could lead to issues due to missing features.",
+            "WARN: `invoke.task` used instead of `ewok.task`; This could lead to issues due to missing features.",
             color="yellow",
         )
 
@@ -41,4 +41,7 @@ def task_with_warning(*alternatives: str):
 
 
 def monkeypatch_invoke(*alternatives: str):
+    if not alternatives:
+        alternatives = ["ewok"]
+
     invoke.task = task_with_warning(*alternatives)
