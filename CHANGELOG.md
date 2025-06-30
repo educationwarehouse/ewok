@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.0 (2025-06-30)
+
+### Feature
+
+* Add `monkeypatch_invoke` to show a warning if `invoke.task` is used instead of `ewok.task` or local alternative ([`cdcfb92`](https://github.com/educationwarehouse/ewok/commit/cdcfb920e7aaa0e39504ad9525c0f8aaa45d65ec))
+
 ## v0.3.2 (2025-06-30)
 
 ### Fix
