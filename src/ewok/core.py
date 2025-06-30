@@ -10,19 +10,23 @@ import typing as t
 import warnings
 from typing import Any, Callable, Iterable, Optional
 
+import invoke
 from docstring_parser import parse as parse_docstring
 from fabric import Connection
 from invoke import Argument, Collection
 from invoke.context import Context
-from invoke.tasks import Task as InvokeTask
 from invoke.tasks import task as invoke_task
 from typing_extensions import Unpack
+
+from .monkey import monkeypatch_invoke
 
 type AnyDict = dict[str, Any]
 type TaskFn = Callable[[Context], Any] | Callable[..., Any]
 
 P = t.ParamSpec("P")
 R = t.TypeVar("R")
+
+monkeypatch_invoke()
 
 
 def extract_arg_doc(docstring: str, arg_name: str):
@@ -99,7 +103,7 @@ def find_namespace(ctx: Context, about: str) -> Collection | None:
     return namespaces(ctx).get(about)
 
 
-class Task(InvokeTask[TaskCallable]):
+class Task(invoke.Task[TaskCallable]):
     """
     Improved version of Invoke Task where you can set custom flags for command line arguments.
     This allows you to specify aliases, rename (e.g. --json for 'as_json')  and custom short flags (--exclude = -x)
