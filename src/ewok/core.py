@@ -6,7 +6,7 @@
 """
 
 import inspect
-import typing
+import typing as t
 import warnings
 from typing import Any, Callable, Iterable, Optional
 
@@ -18,12 +18,11 @@ from invoke.tasks import Task as InvokeTask
 from invoke.tasks import task as invoke_task
 from typing_extensions import Unpack
 
-AnyDict: typing.TypeAlias = dict[str, typing.Any]
+type AnyDict = dict[str, Any]
+type TaskFn = Callable[[Context], Any] | Callable[..., Any]
 
-TaskFn: typing.TypeAlias = typing.Callable[[Context], Any] | typing.Callable[..., Any]
-
-P = typing.ParamSpec("P")
-R = typing.TypeVar("R")
+P = t.ParamSpec("P")
+R = t.TypeVar("R")
 
 
 def extract_arg_doc(docstring: str, arg_name: str):
@@ -37,7 +36,7 @@ def extract_arg_doc(docstring: str, arg_name: str):
     return None
 
 
-class TaskOptions(typing.TypedDict, total=False):
+class TaskOptions(t.TypedDict, total=False):
     name: Optional[str]
     aliases: Iterable[str]
     positional: Optional[Iterable[str]]
@@ -54,7 +53,7 @@ class TaskOptions(typing.TypedDict, total=False):
     hookable: Optional[bool]
 
 
-class TaskCallable(typing.Protocol):
+class TaskCallable(t.Protocol):
     def __call__(
         self, **_: Unpack[TaskOptions]
     ) -> Callable[
@@ -208,7 +207,7 @@ class Task(InvokeTask[TaskCallable]):
         # Call the task with the prepared arguments
         return task(*task_args, **task_kwargs)
 
-    def find_task_across_namespaces(self, ctx: Context) -> dict[str, typing.Self]:
+    def find_task_across_namespaces(self, ctx: Context) -> dict[str, t.Self]:
         return {
             ns.name: task
             for ns in namespaces(ctx).values()

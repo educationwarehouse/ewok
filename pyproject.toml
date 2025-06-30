@@ -12,7 +12,7 @@ authors = [
     { name = "Robin van der Noord", email = "robin.vdn@educationwarehouse.nl" },
     { name = "Remco Boerma", email = "remco.b@educationwarehouse.nl" },
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dynamic = ["version"]
 dependencies = [
     "docstring_parser < 1", # better help
