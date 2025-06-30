@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.1 (2025-06-30)
+
+### Fix
+
+* **monkeypatch_invoke:** Set `ewok.task` as fallback alternative ([`9de4513`](https://github.com/educationwarehouse/ewok/commit/9de4513ba55c86023a26883e53e6bd9066856f44))
+
 ## v0.4.0 (2025-06-30)
 
 ### Feature
