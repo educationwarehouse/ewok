@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.3 (2025-07-04)
+
+### Documentation
+
+* Add github links to pypi ([`6d31b61`](https://github.com/educationwarehouse/ewok/commit/6d31b614445540b943f94714b50ca533984b9a35))
+
 ## v0.4.2 (2025-07-03)
 
 ### Fix
