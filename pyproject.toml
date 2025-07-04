@@ -22,6 +22,11 @@ dependencies = [
     "typing-extensions < 5", # using modern typing features in older python versions
 ]
 
+[project.urls]
+Documentation = "https://github.com/educationwarehouse/ewok#readme"
+Issues = "https://github.com/educationwarehouse/ewok/issues"
+Source = "https://github.com/educationwarehouse/ewok"
+
 [tool.hatch.version]
 path = "src/ewok/__about__.py"
 
