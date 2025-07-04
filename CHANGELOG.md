@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.2 (2025-07-03)
+
+### Fix
+
+* **monkey:** Omit invoke.task usage warning for fabric and invoke internal usage ([`069e1cb`](https://github.com/educationwarehouse/ewok/commit/069e1cba8d6b7d5a595f133a2b121eb38b4415fe))
+
 ## v0.4.1 (2025-06-30)
 
 ### Fix

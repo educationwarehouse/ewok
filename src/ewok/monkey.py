@@ -1,7 +1,10 @@
 import traceback
+import typing
 
+import fabric
 import invoke
-from invoke import task
+from fabric import task as fabric_task
+from invoke import task as invoke_task
 from termcolor import cprint
 
 
@@ -22,26 +25,58 @@ def format_frame(frame: traceback.FrameSummary):
     cprint(f"    {frame.line}", color="blue")  # actual code
 
 
-def task_with_warning(*alternatives: str):
+def task_with_warning(
+    to_replace: tuple[str, typing.Callable],
+    *alternatives: str,
+    exceptions: tuple[str, ...] = (),
+):
+    old_name, old_fn = to_replace
+
+    # only show error once per file:
+    files_seen = set()
+
     def wrapper(*a, **kw):
         stack = traceback.extract_stack(limit=2)
-        cprint(
-            "WARN: `invoke.task` used instead of `ewok.task`; This could lead to issues due to missing features.",
-            color="yellow",
-        )
+        call_frame = stack[0]
+        call_file = call_frame.filename
 
-        alternative_tasks = " or ".join(f"`{alt}.task`" for alt in alternatives)
-        cprint(f"HINT: Consider replacing with {alternative_tasks}", color="cyan")
+        # exceptions:
+        if not (call_file in files_seen or call_file.endswith(exceptions)):
+            files_seen.add(call_file)
+            cprint(
+                f"WARN: `{old_name}.task` used instead of `ewok.task`; "
+                f"This could lead to issues due to missing features.",
+                color="yellow",
+            )
 
-        format_frame(stack[0])
-        print()
-        return task(*a, **kw)
+            alternative_tasks = " or ".join(f"`{alt}.task`" for alt in alternatives)
+            cprint(f"HINT: Consider replacing with {alternative_tasks}", color="cyan")
+
+            format_frame(call_frame)
+            print()
+
+        return old_fn(*a, **kw)
 
     return wrapper
 
 
-def monkeypatch_invoke(*alternatives: str):
+def monkeypatch_invoke(
+    *alternatives: str,
+    patch_invoke: bool = True,
+    patch_fabric: bool = True,
+    exceptions: tuple[str, ...] = (
+        "/site-packages/invoke/tasks.py",
+        "/site-packages/fabric/tasks.py",
+    ),
+):
     if not alternatives:
         alternatives = ["ewok"]
 
-    invoke.task = task_with_warning(*alternatives)
+    if patch_invoke:
+        invoke.task = task_with_warning(
+            ("invoke", fabric_task), *alternatives, exceptions=exceptions
+        )
+    if patch_fabric:
+        fabric.task = task_with_warning(
+            ("fabric", invoke_task), *alternatives, exceptions=exceptions
+        )
