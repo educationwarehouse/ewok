@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.5 (2025-07-07)
+
+### Fix
+
+* Swapped invoke and fabric original task oops ([`f49b4fb`](https://github.com/educationwarehouse/ewok/commit/f49b4fbe12c489e113dad68f5977b104fb04b4a4))
+
 ## v0.4.4 (2025-07-04)
 
 
