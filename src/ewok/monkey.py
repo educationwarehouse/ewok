@@ -74,9 +74,9 @@ def monkeypatch_invoke(
 
     if patch_invoke:
         invoke.task = task_with_warning(
-            ("invoke", fabric_task), *alternatives, exceptions=exceptions
+            ("invoke", invoke_task), *alternatives, exceptions=exceptions
         )
     if patch_fabric:
         fabric.task = task_with_warning(
-            ("fabric", invoke_task), *alternatives, exceptions=exceptions
+            ("fabric", fabric_task), *alternatives, exceptions=exceptions
         )
