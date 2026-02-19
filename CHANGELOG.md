@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.6 (2026-02-19)
+
+### Fix
+
+* Prevent 'SystemError: buffer overflow' on python 3.14 ([`d4f6fce`](https://github.com/educationwarehouse/ewok/commit/d4f6fcea983e1416e6332cef7650bf49275f33c5))
+
 ## v0.4.5 (2025-07-07)
 
 ### Fix
