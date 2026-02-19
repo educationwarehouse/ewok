@@ -1,3 +1,4 @@
+import sys
 import traceback
 import typing
 
@@ -6,6 +7,34 @@ import invoke
 from fabric import task as fabric_task
 from invoke import task as invoke_task
 from termcolor import cprint
+
+
+def patch_invoke_stdin_buffer_overflow() -> None:
+    """
+    Work around Python 3.14 stdin-thread crashes in Invoke.
+
+    Invoke's bytes_to_read() can raise ``SystemError: buffer overflow`` on
+    Python 3.14 when calling ioctl(FIONREAD). Falling back to a 1-byte read
+    preserves interactivity and avoids crashing task execution.
+    """
+    if sys.version_info < (3, 14):
+        return
+
+    from invoke import runners, terminals
+
+    original = terminals.bytes_to_read
+    if getattr(original, "_ewok_py314_safe", False):
+        return
+
+    def safe_bytes_to_read(input_: typing.IO) -> int:
+        try:
+            return original(input_)
+        except SystemError:
+            return 1
+
+    safe_bytes_to_read._ewok_py314_safe = True  # type: ignore[attr-defined]
+    terminals.bytes_to_read = safe_bytes_to_read
+    runners.bytes_to_read = safe_bytes_to_read
 
 
 def format_frame(frame: traceback.FrameSummary):
@@ -69,6 +98,8 @@ def monkeypatch_invoke(
         "/site-packages/fabric/tasks.py",
     ),
 ):
+    patch_invoke_stdin_buffer_overflow()
+
     if not alternatives:
         alternatives = ["ewok"]
 
