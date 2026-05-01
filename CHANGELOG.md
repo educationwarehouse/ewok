@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.7 (2026-05-01)
+
+### Fix
+
+* **mypy:** Overload @task properly ([`109d602`](https://github.com/educationwarehouse/ewok/commit/109d602f01c70bcbea35bc56da35a429b7d2e054))
+
 ## v0.4.6 (2026-02-19)
 
 ### Fix
