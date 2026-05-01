@@ -66,6 +66,9 @@ class TaskCallable(t.Protocol):
     ]: ...
 
 
+TaskBody = Callable[P, R]
+
+
 def tasks(ctx: Context) -> Collection:
     """
     Provides functionality to retrieve a collection of tasks associated with the
@@ -272,7 +275,21 @@ class Task(invoke.Task[TaskCallable]):
         return ctx["result"]
 
 
-def task(*fn: Optional[TaskCallable], **options: Unpack[TaskOptions]) -> TaskCallable:
+@t.overload
+def task(__fn: TaskBody[P, R], /) -> Task: ...
+
+
+@t.overload
+def task(
+    *pre: TaskFn,
+    **options: Unpack[TaskOptions],
+) -> Callable[[TaskBody[P, R]], Task]: ...
+
+
+def task(
+    *fn: TaskBody[..., Any] | TaskFn,
+    **options: Unpack[TaskOptions],
+) -> Task | Callable[[TaskBody[..., Any]], Task]:
     """
     Marks wrapped callable object as a valid Invoke task.
 
@@ -332,4 +349,7 @@ def task(*fn: Optional[TaskCallable], **options: Unpack[TaskOptions]) -> TaskCal
     ``pre`` kwarg for convenience's sake. (It is an error to give both
     ``*args`` and ``pre`` at the same time.)
     """
+    # `invoke.task` supports two modes:
+    # 1) `@task` (direct function argument)
+    # 2) `@task(...)` / `@task(pre_task, ...)` (decorator factory)
     return invoke_task(*fn, **options, klass=Task)
