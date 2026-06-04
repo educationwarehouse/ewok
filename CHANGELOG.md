@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.8 (2026-06-04)
+
+### Fix
+
+* Make ewok.Context wrap fabric.Connection instead of just invoke.Context ([`3fcc01b`](https://github.com/educationwarehouse/ewok/commit/3fcc01b223f7d2c34f252db9c4490acd320ad937))
+
 ## v0.4.7 (2026-05-01)
 
 ### Fix
