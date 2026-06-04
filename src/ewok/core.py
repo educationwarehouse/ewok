@@ -14,11 +14,17 @@ import invoke
 from docstring_parser import parse as parse_docstring
 from fabric import Connection
 from invoke import Argument, Collection
-from invoke.context import Context
 from invoke.tasks import task as invoke_task
 from typing_extensions import Unpack
 
 from .monkey import monkeypatch_invoke
+
+
+class Context(Connection):
+    """
+    Wrapper around fabric.Connection / invoke.Context
+    """
+
 
 type AnyDict = dict[str, Any]
 type TaskFn = Callable[[Context], Any] | Callable[..., Any]

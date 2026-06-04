@@ -1,7 +1,5 @@
-from invoke import Context
-
 from .cli import App
-from .core import Task, find_namespace, namespaces, task, tasks
+from .core import Context, Task, find_namespace, namespaces, task, tasks
 from .monkey import format_frame, monkeypatch_invoke
 
 __all__ = [
