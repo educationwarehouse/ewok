@@ -256,7 +256,7 @@ class Task(invoke.Task[TaskCallable]):
                 elif subresult is not None:
                     ctx["result"] = subresult
 
-    def __call__(self, ctx: Context | Connection, *args, **kwargs):
+    def __call__(self, ctx: Context, *args, **kwargs):
         """Invoke the callable instance.
 
         Args:
@@ -287,7 +287,12 @@ class Task(invoke.Task[TaskCallable]):
             if self.hookable:
                 self._run_hooks(ctx, *args, **kwargs)
 
-            final_result = dict(result) if (result := ctx["result"]) and isinstance(result, invoke.config.DataProxy) else result
+            final_result = (
+                dict(result)
+                if (result := ctx["result"])
+                and isinstance(result, invoke.config.DataProxy)
+                else result
+            )
 
             if is_top_level_cli_call and self.result_renderer:
                 rendered = self.result_renderer(ctx, final_result)
