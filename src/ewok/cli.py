@@ -237,6 +237,9 @@ class App(Fab):
         super().create_config()
         self.config.app = self
 
+    def run(self, argv: list[str] | None = None, exit: bool = True):
+        return super().run(argv=argv, exit=exit)
+
     def core_args(self):
         return super().core_args() + [
             Argument(

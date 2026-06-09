@@ -28,6 +28,7 @@ class Context(Connection):
 
 type AnyDict = dict[str, Any]
 type TaskFn = Callable[[Context], Any] | Callable[..., Any]
+type ResultRenderer = Callable[[Context, Any], str | None]
 
 P = t.ParamSpec("P")
 R = t.TypeVar("R")
@@ -61,6 +62,7 @@ class TaskOptions(t.TypedDict, total=False):
     incrementable: Optional[Iterable[str]]
     flags: dict[str, Iterable[str]] | None
     hookable: Optional[bool]
+    result_renderer: ResultRenderer | None
 
 
 class TaskCallable(t.Protocol):
@@ -138,9 +140,11 @@ class Task(invoke.Task[TaskCallable]):
         # new:
         flags: dict[str, Iterable[str]] | None = None,
         hookable: Optional[bool] = None,
+        result_renderer: ResultRenderer | None = None,
     ):
         self._flags = flags or {}
         self.hookable = hookable
+        self.result_renderer = result_renderer
 
         super().__init__(
             body=body,
@@ -263,22 +267,36 @@ class Task(invoke.Task[TaskCallable]):
         Returns:
             The result of the superclass call.
         """
-        # ctx.get works for Context but not for Connection!
-        setattr(
-            ctx, "result", getattr(ctx, "result", {})
-        )  # ctx["result"] = ctx.get("result") or {}
+        depth = int(getattr(ctx, "_ewok_task_call_depth", 0))
+        is_top_level_cli_call = depth == 0
+        setattr(ctx, "_ewok_task_call_depth", depth + 1)
 
-        result = super().__call__(ctx, *args, **kwargs)
+        try:
+            # ctx.get works for Context but not for Connection!
+            setattr(
+                ctx, "result", getattr(ctx, "result", {})
+            )  # ctx["result"] = ctx.get("result") or {}
 
-        if isinstance(ctx["result"], dict) and isinstance(result, dict):
-            ctx["result"].update(result)
-        elif result is not None:
-            ctx["result"] = result
+            result = super().__call__(ctx, *args, **kwargs)
 
-        if self.hookable:
-            self._run_hooks(ctx, *args, **kwargs)
+            if isinstance(ctx["result"], dict) and isinstance(result, dict):
+                ctx["result"].update(result)
+            elif result is not None:
+                ctx["result"] = result
 
-        return ctx["result"]
+            if self.hookable:
+                self._run_hooks(ctx, *args, **kwargs)
+
+            final_result = dict(ctx["result"])
+
+            if is_top_level_cli_call and self.result_renderer:
+                rendered = self.result_renderer(ctx, final_result)
+                if rendered is not None:
+                    print(rendered)
+
+            return final_result
+        finally:
+            setattr(ctx, "_ewok_task_call_depth", depth)
 
 
 @t.overload
