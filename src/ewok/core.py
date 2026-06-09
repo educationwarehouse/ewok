@@ -287,7 +287,7 @@ class Task(invoke.Task[TaskCallable]):
             if self.hookable:
                 self._run_hooks(ctx, *args, **kwargs)
 
-            final_result = dict(ctx["result"])
+            final_result = dict(result) if (result := ctx["result"]) and isinstance(result, invoke.config.DataProxy) else result
 
             if is_top_level_cli_call and self.result_renderer:
                 rendered = self.result_renderer(ctx, final_result)
