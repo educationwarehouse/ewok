@@ -2,6 +2,16 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.0 (2026-06-09)
+
+### Feature
+
+* Adding 'result renderer' so hookable tasks can create a combined output with subtasks ([`5235869`](https://github.com/educationwarehouse/ewok/commit/5235869ab7b94bfaab3c10490e2c4dd648aacb41))
+
+### Fix
+
+* Only cast `dict()` result if it's a DataProxy ([`9dc0d9a`](https://github.com/educationwarehouse/ewok/commit/9dc0d9a2ff30280705e7340a5fb117d267926206))
+
 ## v0.4.8 (2026-06-04)
 
 ### Fix
