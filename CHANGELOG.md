@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.1 (2026-07-10)
+
+### Fix
+
+* Resolve `AttributeError: No attribute or config key found for 'app'` ([`0f8bf80`](https://github.com/educationwarehouse/ewok/commit/0f8bf8081079026027d10d7ca28e4c4b9664b820))
+
 ## v0.5.0 (2026-06-09)
 
 ### Feature
