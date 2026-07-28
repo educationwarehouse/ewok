@@ -1,6 +1,6 @@
 import sys
 import traceback
-import typing
+import typing as t
 
 import fabric
 import invoke
@@ -26,7 +26,7 @@ def patch_invoke_stdin_buffer_overflow() -> None:
     if getattr(original, "_ewok_py314_safe", False):
         return
 
-    def safe_bytes_to_read(input_: typing.IO) -> int:
+    def safe_bytes_to_read(input_: t.IO) -> int:
         try:
             return original(input_)
         except SystemError:
@@ -48,14 +48,12 @@ def format_frame(frame: traceback.FrameSummary):
     Args:
         frame (traceback.FrameSummary): The traceback frame to format and print.
     """
-    cprint(
-        f'  File "{frame.filename}", line {frame.lineno}, in {frame.name}', color="blue"
-    )
+    cprint(f'  File "{frame.filename}", line {frame.lineno}, in {frame.name}', color="blue")
     cprint(f"    {frame.line}", color="blue")  # actual code
 
 
 def task_with_warning(
-    to_replace: tuple[str, typing.Callable],
+    to_replace: tuple[str, t.Callable],
     *alternatives: str,
     exceptions: tuple[str, ...] = (),
 ):
@@ -101,13 +99,9 @@ def monkeypatch_invoke(
     patch_invoke_stdin_buffer_overflow()
 
     if not alternatives:
-        alternatives = ["ewok"]
+        alternatives = ("ewok",)
 
     if patch_invoke:
-        invoke.task = task_with_warning(
-            ("invoke", invoke_task), *alternatives, exceptions=exceptions
-        )
+        invoke.task = task_with_warning(("invoke", invoke_task), *alternatives, exceptions=exceptions)
     if patch_fabric:
-        fabric.task = task_with_warning(
-            ("fabric", fabric_task), *alternatives, exceptions=exceptions
-        )
+        fabric.task = task_with_warning(("fabric", fabric_task), *alternatives, exceptions=exceptions)

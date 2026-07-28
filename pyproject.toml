@@ -37,3 +37,54 @@ change_log = "CHANGELOG.md"
 upload_to_repository = false
 upload_to_release = false
 build_command = "uv build"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+
+select = [
+    "F", # pyflake error
+    "E", # pycodestyle error
+    "W", # pycodestyle warning
+    "Q", # quotes
+    "A", # builtins
+    # "C4", # comprehensions
+    # "RET", # return
+    "SIM", # simplify
+    "ARG", # unused arguments
+    # "COM", # comma's
+    "PTH", # use pathlib
+    "RUF", # ruff rules
+    "C90", # mccabe (complexity)
+    #    "I", # isort
+    "N", # pep-8 naming
+    # "D", # pydocstyle
+    # "UP", # pyupgrade
+    "YTT", # flake8-2020 (version hardcoding)
+    # "ANN", # annotations - werkt niet goed samen met invoke
+    # "ASYNC", # async - gebruiken we hier niet
+    # "S", # bandit (security)
+    # "BLE", # blind except
+    # "FBT", # boolean trap
+    # "B", # bugbear
+    # "DTZ", # datetimes
+    # "T10", # debugger
+    # "DJ", # django
+    # "ISC", # implicit string concat (handig voor als je een , mist in een lijst bijv.)
+    "SIM", # simplify
+]
+
+ignore = [
+    # Allow non-abstract empty methods in abstract base classes
+    "B027",
+    # Allow boolean positional values in function calls, like `dict.get(... True)`
+    "FBT003",
+    # Ignore checks for possible passwords
+    "S105", "S106", "S107",
+    # Ignore complexity
+    "C901", "PLR0911", "PLR0912", "PLR0913", "PLR0915",
+    "RUF002", # allow - in docstrings
+    "RUF012", # CUSTOM_FLAGS is a mutable class-level extension point
+]

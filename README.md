@@ -194,9 +194,7 @@ def setup(c: Context):
 def setup(c: Context):
     """Project-specific setup questions"""
     print("🏠 Local setup: Configuring project settings...")
-    check_env(
-        key="DOMAIN", default="localhost", comment="The hosting domain for this project"
-    )
+    check_env(key="DOMAIN", default="localhost", comment="The hosting domain for this project")
     set_file_permissions()
 ```
 
@@ -340,9 +338,7 @@ app = App(
     extra_modules=(extra, slow),  # namespaced as `extra.` and `slow.`
     plugin_entrypoint=("my-app", "myapp_plugins"),
     # only if it differs from 'name', can also be multiple or None to disable
-    config_dir=Path(
-        "~/custom-config/my-app"
-    ),  # only if it differs from 'name', can also be a Path or None to disable
+    config_dir=Path("~/custom-config/my-app"),  # only if it differs from 'name', can also be a Path or None to disable
     include_project=True,  # to include project-specific tasks.py and <namespace>.tasks.py files
     include_local=True,  # to include tasks.py in the local cwd and up your file tree (../tasks.py etc.)
 )

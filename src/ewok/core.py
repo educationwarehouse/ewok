@@ -8,8 +8,6 @@
 import inspect
 import typing as t
 import warnings
-from collections.abc import Callable, Iterable
-from typing import Any, Optional, Unpack
 
 import invoke
 from docstring_parser import parse as parse_docstring
@@ -26,9 +24,9 @@ class Context(Connection):
     """
 
 
-type AnyDict = dict[str, Any]
-type TaskFn = Callable[[Context], Any] | Callable[..., Any]
-type ResultRenderer = Callable[[Context, Any], str | None]
+type AnyDict = dict[str, t.Any]
+type TaskFn = t.Callable[[Context], t.Any] | t.Callable[..., t.Any]
+type ResultRenderer = t.Callable[[Context, t.Any], str | None]
 
 P = t.ParamSpec("P")
 R = t.TypeVar("R")
@@ -36,7 +34,10 @@ R = t.TypeVar("R")
 monkeypatch_invoke()
 
 
-def extract_arg_doc(docstring: str, arg_name: str):
+def extract_arg_doc(docstring: str | None, arg_name: str) -> str | None:
+    if docstring is None:
+        return None
+
     doc = parse_docstring(docstring)
     for param in doc.params:
         if param.arg_name != arg_name:
@@ -49,32 +50,32 @@ def extract_arg_doc(docstring: str, arg_name: str):
 
 class TaskOptions(t.TypedDict, total=False):
     name: str | None
-    aliases: Iterable[str]
-    positional: Iterable[str] | None
-    optional: Iterable[str]
+    aliases: t.Iterable[str]
+    positional: t.Iterable[str] | None
+    optional: t.Iterable[str]
     default: bool
     auto_shortflags: bool
     help: AnyDict | None
     pre: list[TaskFn] | None
     post: list[TaskFn] | None
     autoprint: bool
-    iterable: Iterable[str] | None
-    incrementable: Iterable[str] | None
-    flags: dict[str, Iterable[str]] | None
+    iterable: t.Iterable[str] | None
+    incrementable: t.Iterable[str] | None
+    flags: dict[str, t.Iterable[str]] | None
     hookable: bool | None
     result_renderer: ResultRenderer | None
 
 
 class TaskCallable(t.Protocol):
     def __call__(
-        self, **_: Unpack[TaskOptions]
-    ) -> Callable[
-        [Callable[P, R]],
-        Callable[P, R],
+        self, **_: t.Unpack[TaskOptions]
+    ) -> t.Callable[
+        [t.Callable[P, R]],
+        t.Callable[P, R],
     ]: ...
 
 
-TaskBody = Callable[P, R]
+TaskBody = t.Callable[P, R]
 
 
 def tasks(ctx: Context) -> Collection:
@@ -120,25 +121,25 @@ class Task(invoke.Task[TaskCallable]):
     This allows you to specify aliases, rename (e.g. --json for 'as_json')  and custom short flags (--exclude = -x)
     """
 
-    _flags: dict[str, list[str]]
+    _flags: dict[str, t.Iterable[str]]
 
     def __init__(
         self,
         body: TaskCallable,
         name: str | None = None,
-        aliases: Iterable[str] = (),
-        positional: Iterable[str] | None = None,
-        optional: Iterable[str] = (),
+        aliases: t.Iterable[str] = (),
+        positional: t.Iterable[str] | None = None,
+        optional: t.Iterable[str] = (),
         default: bool = False,
         auto_shortflags: bool = True,
-        help: Optional[AnyDict] = None,  # noqa
+        help: AnyDict | None = None,  # noqa
         pre: list[TaskFn] | None = None,
         post: list[TaskFn] | None = None,
         autoprint: bool = False,
-        iterable: Iterable[str] | None = None,
-        incrementable: Iterable[str] | None = None,
+        iterable: t.Iterable[str] | None = None,
+        incrementable: t.Iterable[str] | None = None,
         # new:
-        flags: dict[str, Iterable[str]] | None = None,
+        flags: dict[str, t.Iterable[str]] | None = None,
         hookable: bool | None = None,
         result_renderer: ResultRenderer | None = None,
     ):
@@ -155,14 +156,14 @@ class Task(invoke.Task[TaskCallable]):
             default=default,
             auto_shortflags=auto_shortflags,
             help=help,
-            pre=pre,  # type: ignore
-            post=post,  # type: ignore
+            pre=t.cast(t.Any, pre),
+            post=t.cast(t.Any, post),
             autoprint=autoprint,
             iterable=iterable,
             incrementable=incrementable,
         )
 
-    def arg_opts(self, name: str, default: str, taken_names: Iterable[str]) -> AnyDict:
+    def arg_opts(self, name: str, default: str, taken_names: t.Iterable[str]) -> AnyDict:
         """Get argument options.
 
         Args:
@@ -173,14 +174,8 @@ class Task(invoke.Task[TaskCallable]):
         Returns:
             AnyDict: A dictionary of argument options.
         """
-        opts = super().arg_opts(
-            name=name, default=default, taken_names=set(taken_names)
-        )
-        help_str = (
-            self.help.pop(name, None)
-            or opts.get("help")
-            or extract_arg_doc(self.body.__doc__, name)
-        )
+        opts = super().arg_opts(name=name, default=default, taken_names=set(taken_names))
+        help_str = self.help.pop(name, None) or opts.get("help") or extract_arg_doc(self.body.__doc__, name)
         opts["help"] = opts.get("help") or help_str
 
         if flags := self._flags.get(name):
@@ -191,7 +186,8 @@ class Task(invoke.Task[TaskCallable]):
         return opts
 
     def get_arguments(
-        self, ignore_unknown_help: bool | None = None
+        self,
+        ignore_unknown_help: bool | None = None,  # noqa: ARG002  # Required by the invoke.Task override interface.
     ) -> list[Argument]:
         return super().get_arguments(ignore_unknown_help=True)
 
@@ -225,11 +221,7 @@ class Task(invoke.Task[TaskCallable]):
         return task(*task_args, **task_kwargs)
 
     def find_task_across_namespaces(self, ctx: Context) -> dict[str, t.Self]:
-        return {
-            ns.name: task
-            for ns in namespaces(ctx).values()
-            if (task := ns.tasks.get(self.name))
-        }
+        return {ns.name: task for ns in namespaces(ctx).values() if (task := ns.tasks.get(self.name))}
 
     def _run_hooks(self, ctx: Context, *args, **kwargs):
         """Run hooks for the current instance.
@@ -254,7 +246,7 @@ class Task(invoke.Task[TaskCallable]):
                 if isinstance(ctx["result"], dict) and isinstance(subresult, dict):
                     ctx["result"].update(subresult)
                 elif subresult is not None:
-                    ctx["result"] = subresult
+                    ctx["result"] = t.cast(t.Any, subresult)
 
     def __call__(self, ctx: Context, *args, **kwargs):
         """Invoke the callable instance.
@@ -280,16 +272,13 @@ class Task(invoke.Task[TaskCallable]):
             if isinstance(ctx["result"], dict) and isinstance(result, dict):
                 ctx["result"].update(result)
             elif result is not None:
-                ctx["result"] = result
+                ctx["result"] = t.cast(t.Any, result)
 
             if self.hookable:
                 self._run_hooks(ctx, *args, **kwargs)
 
             final_result = (
-                dict(result)
-                if (result := ctx["result"])
-                and isinstance(result, invoke.config.DataProxy)
-                else result
+                dict(result) if (result := ctx["result"]) and isinstance(result, invoke.config.DataProxy) else result
             )
 
             if is_top_level_cli_call and self.result_renderer:
@@ -309,14 +298,14 @@ def task(__fn: TaskBody[P, R], /) -> Task: ...
 @t.overload
 def task(
     *pre: TaskFn,
-    **options: Unpack[TaskOptions],
-) -> Callable[[TaskBody[P, R]], Task]: ...
+    **options: t.Unpack[TaskOptions],
+) -> t.Callable[[TaskBody[P, R]], Task]: ...
 
 
 def task(
-    *fn: TaskBody[..., Any] | TaskFn,
-    **options: Unpack[TaskOptions],
-) -> Task | Callable[[TaskBody[..., Any]], Task]:
+    *fn: TaskBody[..., t.Any] | TaskFn,
+    **options: t.Unpack[TaskOptions],
+) -> Task | t.Callable[[TaskBody[..., t.Any]], Task]:
     """
     Marks wrapped callable object as a valid Invoke task.
 
@@ -366,9 +355,17 @@ def task(
         flags (dict[str, list[str]]): Mapping of flag names that modify task behavior.
                                e.g. `@task(flags={'exclude': ['--exclude', '-x'], 'as_json': ['--json']})`
         hookable (Optional[bool]): Boolean option that controls whether the task can be hooked by plugins.
-                                       - **True**: This setting is primarily used by core tasks. It allows the task to look for other tasks (from plugins or local definitions) with the same name and execute them after the main task completes. This enables a cascading execution of tasks, enhancing modularity and reusability.
-                                       - **False**: This setting is typically used by local or plugin tasks to indicate that they do not want to be hooked by core tasks, even if they share the same name. This ensures that the task remains isolated and does not trigger any unintended behavior from cascading executions.
-                                       - **None** (default): This represents the default behavior. For core tasks, it means that the task will not search for other tasks with the same name to execute. For local or plugin tasks, it allows them to be hooked by other tasks.
+            - **True**: This setting is primarily used by core tasks. It allows the task to look for
+              other tasks (from plugins or local definitions) with the same name and execute them
+              after the main task completes. This enables a cascading execution of tasks, enhancing
+              modularity and reusability.
+            - **False**: This setting is typically used by local or plugin tasks to indicate that they
+              do not want to be hooked by core tasks, even if they share the same name. This ensures
+              that the task remains isolated and does not trigger any unintended behavior from
+              cascading executions.
+            - **None** (default): This represents the default behavior. For core tasks, it means that
+              the task will not search for other tasks with the same name to execute. For local or
+              plugin tasks, it allows them to be hooked by other tasks.
         fn (TaskCallable): when you use `@task` without parentheses, this is the function you're decorating.
                             Using `@task()` with parens is recommended for better type-hints.
 

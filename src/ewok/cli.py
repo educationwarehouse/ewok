@@ -1,6 +1,5 @@
 import importlib
 import importlib.util
-import os
 import sys
 import typing as t
 import warnings
@@ -44,23 +43,23 @@ def include_packaged_plugins(
     collection: Collection,
     package: str,
     local_tasks: Module,
-    selection: t.Collection[str] = None,
+    selection: t.Collection[str] | None = None,
 ) -> None:
     # should somehow be defined in the child package
 
-    tasks_dir = Path(local_tasks.__file__).parent
-    discovered_plugins = os.listdir(tasks_dir)
-    discovered_plugins = [
-        _.removesuffix(".py") for _ in discovered_plugins if not _.startswith("_")
-    ]
+    module_file = local_tasks.__file__
+    if module_file is None:
+        raise ValueError("Packaged task modules must be file-backed.")
+
+    tasks_dir = Path(module_file).parent
+    discovered_plugins = [path.name for path in tasks_dir.iterdir()]
+    discovered_plugins = [_.removesuffix(".py") for _ in discovered_plugins if not _.startswith("_")]
     if selection is not None:
         discovered_plugins = [_ for _ in discovered_plugins if _ in selection]
 
     for plugin in discovered_plugins:
         # module = importlib.import_module(f".local_tasks.{plugin}", package=package)
-        module = importlib.import_module(
-            f"{local_tasks.__package__}.{plugin}", package=package
-        )
+        module = importlib.import_module(f"{local_tasks.__package__}.{plugin}", package=package)
         plugin_collection = Collection.from_module(module)
         collection.add_collection(plugin_collection, plugin)
 
@@ -73,7 +72,7 @@ def include_cwd_tasks(collection: Collection) -> None:
         path = Path(_path)
         sys.path = [str(path), *old_path]
         try:
-            import tasks as local_tasks
+            local_tasks = importlib.import_module("tasks")
 
             local = Collection.from_module(local_tasks)
             collection.add_collection(local, "local")
@@ -90,11 +89,9 @@ def include_cwd_tasks(collection: Collection) -> None:
     sys.path = old_path
 
 
-def collection_from_abs_path(
-    path: str, name: str, plugin_type: str = "personal"
-) -> Collection | None:
+def collection_from_abs_path(path: str, name: str, plugin_type: str = "personal") -> Collection | None:
     try:
-        if spec := importlib.util.spec_from_file_location(name, path):
+        if (spec := importlib.util.spec_from_file_location(name, path)) and spec.loader:
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
             return Collection.from_module(module)
@@ -121,11 +118,7 @@ def include_personal_tasks(collection: Collection, config: Path) -> None:
             sys.path.append(config_path)
 
     personal_tasks = config / "tasks.py"
-    if personal_tasks.exists() and (
-        personal_collection := collection_from_abs_path(
-            str(personal_tasks), "_personal_"
-        )
-    ):
+    if personal_tasks.exists() and (personal_collection := collection_from_abs_path(str(personal_tasks), "_personal_")):
         collection.tasks |= personal_collection.tasks
 
     # namespace.tasks.py:
@@ -140,13 +133,11 @@ def include_other_project_tasks(collection: Collection) -> None:
     for file in Path().glob("*.tasks.py"):
         namespace = file.stem.split(".")[0]
 
-        if plugin_collection := collection_from_abs_path(
-            str(file), namespace, plugin_type="local"
-        ):
+        if plugin_collection := collection_from_abs_path(str(file), namespace, plugin_type="local"):
             collection.add_collection(plugin_collection, namespace)
 
 
-class EwokExecutor(Executor):  # type: ignore
+class EwokExecutor(Executor):
     def expand_calls(self, calls: list[Call], apply_hosts: bool = True) -> list[Call]:
         # always apply hosts (so pre and post are also executed remotely)
         apply_hosts = True
@@ -191,9 +182,7 @@ class App(Fab):
             version=version,
             executor_class=executor_class or EwokExecutor,
             config_class=config_class or EwokConfig,
-            namespace=core_module
-            if isinstance(core_module, Collection)
-            else Collection.from_module(core_module),
+            namespace=core_module if isinstance(core_module, Collection) else Collection.from_module(core_module),
             name=name,
             binary=binary,
             loader_class=loader_class,
@@ -208,11 +197,7 @@ class App(Fab):
             # empty but not None, default to 'name'
             self.plugin_entrypoints = [name]
         else:
-            self.plugin_entrypoints = (
-                [plugin_entrypoint]
-                if isinstance(plugin_entrypoint, str)
-                else plugin_entrypoint
-            )
+            self.plugin_entrypoints = [plugin_entrypoint] if isinstance(plugin_entrypoint, str) else plugin_entrypoint
 
         if config_dir is None:
             self.config_dir = None
@@ -229,7 +214,7 @@ class App(Fab):
         super().create_config()
         self.config.app = self
 
-    def run(self, argv: list[str] | None = None, exit: bool = True):
+    def run(self, argv: list[str] | None = None, exit: bool = True):  # noqa: A002  # Preserve Fab.run's public signature.
         return super().run(argv=argv, exit=exit)
 
     def core_args(self):
@@ -249,64 +234,60 @@ class App(Fab):
         return super().print_task_help(name)
 
     def parse_collection(self):
+        namespace = t.cast(Collection, self.namespace)
         import_ewok = self.ewok_modules and not self.args["no-ewok"].value
         import_local = self.include_local and not self.args["no-local"].value
         import_plugins = self.plugin_entrypoints and not self.args["no-plugins"].value
         import_packaged = self.extra_modules and not self.args["no-packaged"].value
         import_project = self.include_project and not self.args["no-project"].value
-        import_personal = self.config_dir and not self.args["no-personal"].value
+        config_dir = self.config_dir
 
         if import_ewok:
             from . import local_tasks
 
             # None means all, otherwise the options are filtered.
-            selection = (
-                None if isinstance(self.ewok_modules, bool) else self.ewok_modules
-            )
-            include_packaged_plugins(self.namespace, "ewok", local_tasks, selection)
+            selection = None if isinstance(self.ewok_modules, bool) else self.ewok_modules
+            include_packaged_plugins(namespace, "ewok", local_tasks, selection)
 
         if import_plugins:
             # pip plugins
             for entrypoint in self.plugin_entrypoints:
-                include_plugins(self.namespace, entrypoint)
+                include_plugins(namespace, entrypoint)
 
         if import_packaged:
             # from src.edwh.local_tasks
             for module in self.extra_modules:
-                include_packaged_plugins(self.namespace, self.name, module)
+                include_packaged_plugins(namespace, self.name, module)
 
         if import_local:
             # from tasks.py and ../tasks.py etc.
-            include_cwd_tasks(self.namespace)
+            include_cwd_tasks(namespace)
 
         if import_project:
             # *.tasks.py in current project
-            include_other_project_tasks(self.namespace)
+            include_other_project_tasks(namespace)
 
-        if import_personal:
+        if config_dir is not None and not self.args["no-personal"].value:
             # ~/.config/edwh/personal.py
-            include_personal_tasks(self.namespace, self.config_dir)
+            include_personal_tasks(namespace, config_dir)
 
         return super().parse_collection()
 
-    def __call__(self, argv: list[str] | None = None, exit: bool = True) -> None:
+    def __call__(self, argv: list[str] | None = None, exit: bool = True) -> None:  # noqa: A002  # Match Fab's call interface.
         return self.run(argv=argv, exit=exit)
 
     def __repr__(self):
-        plugin_info = (
-            f", plugin entrypoints: {self.plugin_entrypoints}"
-            if self.plugin_entrypoints
-            else ""
-        )
-        modules_info = (
-            f", extra modules: {len(self.extra_modules)}" if self.extra_modules else ""
-        )
+        plugin_info = f", plugin entrypoints: {self.plugin_entrypoints}" if self.plugin_entrypoints else ""
+        modules_info = f", extra modules: {len(self.extra_modules)}" if self.extra_modules else ""
         config_info = f", config dir: {self.config_dir}" if self.config_dir else ""
         project_info = f", include project: {self.include_project}"
         local_info = f", include local: {self.include_local}"
         ewok_info = f", ewok modules: {self.ewok_modules}"
 
-        return f"<App '{self.name}' v{self.version}{plugin_info}{modules_info}{config_info}{project_info}{local_info}{ewok_info}>"
+        return (
+            f"<App '{self.name}' v{self.version}{plugin_info}{modules_info}"
+            f"{config_info}{project_info}{local_info}{ewok_info}>"
+        )
 
 
 class EwokConfig(Config):
