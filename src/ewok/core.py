@@ -85,9 +85,9 @@ def tasks(ctx: Context) -> Collection:
     namespace details from the application configuration bound to the context
     and returns it.
     """
-    app = ctx.config.app
+    app = getattr(ctx.config, "app", None)
 
-    return app.namespace
+    return app.namespace if app is not None else Collection()
 
 
 def namespaces(ctx: Context):
