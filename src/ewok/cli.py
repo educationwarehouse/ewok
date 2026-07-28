@@ -92,7 +92,7 @@ def include_cwd_tasks(collection: Collection) -> None:
 
 def collection_from_abs_path(
     path: str, name: str, plugin_type: str = "personal"
-) -> t.Optional[Collection]:
+) -> Collection | None:
     try:
         if spec := importlib.util.spec_from_file_location(name, path):
             module = importlib.util.module_from_spec(spec)
@@ -180,12 +180,12 @@ class App(Fab):
         include_local: bool = True,
         ewok_modules: bool | t.Collection[str] = True,
         # from invoke, optional:
-        binary: t.Optional[str] = None,
-        loader_class: t.Optional[t.Type[Loader]] = None,
-        binary_names: t.Optional[list[str]] = None,
+        binary: str | None = None,
+        loader_class: type[Loader] | None = None,
+        binary_names: list[str] | None = None,
         # fron invoke, dangerous to overwrite because of custom logic:
-        config_class: t.Optional[t.Type[Config]] = None,
-        executor_class: t.Optional[t.Type[Executor]] = None,
+        config_class: type[Config] | None = None,
+        executor_class: type[Executor] | None = None,
     ):
         super().__init__(
             version=version,
@@ -289,7 +289,7 @@ class App(Fab):
 
         return super().parse_collection()
 
-    def __call__(self, argv: t.Optional[list[str]] = None, exit: bool = True) -> None:
+    def __call__(self, argv: list[str] | None = None, exit: bool = True) -> None:
         return self.run(argv=argv, exit=exit)
 
     def __repr__(self):

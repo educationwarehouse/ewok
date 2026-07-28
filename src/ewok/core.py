@@ -8,14 +8,14 @@
 import inspect
 import typing as t
 import warnings
-from typing import Any, Callable, Iterable, Optional
+from collections.abc import Callable, Iterable
+from typing import Any, Optional, Unpack
 
 import invoke
 from docstring_parser import parse as parse_docstring
 from fabric import Connection
 from invoke import Argument, Collection
 from invoke.tasks import task as invoke_task
-from typing_extensions import Unpack
 
 from .monkey import monkeypatch_invoke
 
@@ -48,20 +48,20 @@ def extract_arg_doc(docstring: str, arg_name: str):
 
 
 class TaskOptions(t.TypedDict, total=False):
-    name: Optional[str]
+    name: str | None
     aliases: Iterable[str]
-    positional: Optional[Iterable[str]]
+    positional: Iterable[str] | None
     optional: Iterable[str]
     default: bool
     auto_shortflags: bool
-    help: Optional[AnyDict]
-    pre: Optional[list[TaskFn]]
-    post: Optional[list[TaskFn]]
+    help: AnyDict | None
+    pre: list[TaskFn] | None
+    post: list[TaskFn] | None
     autoprint: bool
-    iterable: Optional[Iterable[str]]
-    incrementable: Optional[Iterable[str]]
+    iterable: Iterable[str] | None
+    incrementable: Iterable[str] | None
     flags: dict[str, Iterable[str]] | None
-    hookable: Optional[bool]
+    hookable: bool | None
     result_renderer: ResultRenderer | None
 
 
@@ -125,21 +125,21 @@ class Task(invoke.Task[TaskCallable]):
     def __init__(
         self,
         body: TaskCallable,
-        name: Optional[str] = None,
+        name: str | None = None,
         aliases: Iterable[str] = (),
-        positional: Optional[Iterable[str]] = None,
+        positional: Iterable[str] | None = None,
         optional: Iterable[str] = (),
         default: bool = False,
         auto_shortflags: bool = True,
         help: Optional[AnyDict] = None,  # noqa
-        pre: Optional[list[TaskFn]] = None,
-        post: Optional[list[TaskFn]] = None,
+        pre: list[TaskFn] | None = None,
+        post: list[TaskFn] | None = None,
         autoprint: bool = False,
-        iterable: Optional[Iterable[str]] = None,
-        incrementable: Optional[Iterable[str]] = None,
+        iterable: Iterable[str] | None = None,
+        incrementable: Iterable[str] | None = None,
         # new:
         flags: dict[str, Iterable[str]] | None = None,
-        hookable: Optional[bool] = None,
+        hookable: bool | None = None,
         result_renderer: ResultRenderer | None = None,
     ):
         self._flags = flags or {}
@@ -191,7 +191,7 @@ class Task(invoke.Task[TaskCallable]):
         return opts
 
     def get_arguments(
-        self, ignore_unknown_help: Optional[bool] = None
+        self, ignore_unknown_help: bool | None = None
     ) -> list[Argument]:
         return super().get_arguments(ignore_unknown_help=True)
 
@@ -269,13 +269,11 @@ class Task(invoke.Task[TaskCallable]):
         """
         depth = int(getattr(ctx, "_ewok_task_call_depth", 0))
         is_top_level_cli_call = depth == 0
-        setattr(ctx, "_ewok_task_call_depth", depth + 1)
+        ctx._ewok_task_call_depth = depth + 1
 
         try:
             # ctx.get works for Context but not for Connection!
-            setattr(
-                ctx, "result", getattr(ctx, "result", {})
-            )  # ctx["result"] = ctx.get("result") or {}
+            ctx.result = getattr(ctx, "result", {})  # ctx["result"] = ctx.get("result") or {}
 
             result = super().__call__(ctx, *args, **kwargs)
 
@@ -301,7 +299,7 @@ class Task(invoke.Task[TaskCallable]):
 
             return final_result
         finally:
-            setattr(ctx, "_ewok_task_call_depth", depth)
+            ctx._ewok_task_call_depth = depth
 
 
 @t.overload
