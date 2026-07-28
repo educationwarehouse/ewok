@@ -90,7 +90,9 @@ def include_cwd_tasks(collection: Collection) -> None:
     sys.path = old_path
 
 
-def collection_from_abs_path(path: str, name: str) -> t.Optional[Collection]:
+def collection_from_abs_path(
+    path: str, name: str, plugin_type: str = "personal"
+) -> t.Optional[Collection]:
     try:
         if spec := importlib.util.spec_from_file_location(name, path):
             module = importlib.util.module_from_spec(spec)
@@ -101,7 +103,7 @@ def collection_from_abs_path(path: str, name: str) -> t.Optional[Collection]:
 
     except Exception as e:
         cprint(
-            f"Failed to include personal plugin {name}: {e}",
+            f"Failed to include {plugin_type} plugin '{name}': {e}",
             file=sys.stderr,
             color="yellow",
         )
@@ -138,20 +140,10 @@ def include_other_project_tasks(collection: Collection) -> None:
     for file in Path().glob("*.tasks.py"):
         namespace = file.stem.split(".")[0]
 
-        spec = importlib.util.spec_from_file_location(
-            name=namespace,  # note that ".test" is not a valid module name
-            location=file,
-        )
-
-        if not (spec and spec.loader):
-            continue
-
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-
-        # module = importlib.import_module(file, package="edwh")
-        plugin_collection = Collection.from_module(module)
-        collection.add_collection(plugin_collection, namespace)
+        if plugin_collection := collection_from_abs_path(
+            str(file), namespace, plugin_type="local"
+        ):
+            collection.add_collection(plugin_collection, namespace)
 
 
 class EwokExecutor(Executor):  # type: ignore
