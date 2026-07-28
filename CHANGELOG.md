@@ -2,6 +2,16 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.2 (2026-07-28)
+
+### Fix
+
+* Don't fully crash if local plugin fails to load, ([`672812f`](https://github.com/educationwarehouse/ewok/commit/672812f19987b6533a4df0a3559a9cccb847443d))
+
+### Documentation
+
+* **readme:** Reformat code examples ([`0910e18`](https://github.com/educationwarehouse/ewok/commit/0910e18001fc8be1449c7f30ebdb424c4795cd47))
+
 ## v0.5.1 (2026-07-10)
 
 ### Fix
