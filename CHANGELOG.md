@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.3 (2026-08-13)
+
+### Fix
+* **cli:** warn when project task namespaces are overridden
+
 ## v0.5.2 (2026-07-28)
 
 ### Fix

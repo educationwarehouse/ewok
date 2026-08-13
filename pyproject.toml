@@ -20,7 +20,7 @@ dependencies = [
     "termcolor < 3", # improved ansi colored print (v3 removes Color type)
     "typing-extensions < 5", # using modern typing features in older python versions
 ]
-version = "0.5.2"
+version = "0.5.3"
 
 [project.urls]
 Documentation = "https://github.com/educationwarehouse/ewok#readme"
