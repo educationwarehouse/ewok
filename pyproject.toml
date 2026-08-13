@@ -13,7 +13,6 @@ authors = [
     { name = "Remco Boerma", email = "remco.b@educationwarehouse.nl" },
 ]
 requires-python = ">=3.12"
-dynamic = ["version"]
 dependencies = [
     "docstring_parser < 1", # better help
     "fabric >= 3.1, < 4", # invoke but remote
@@ -21,22 +20,57 @@ dependencies = [
     "termcolor < 3", # improved ansi colored print (v3 removes Color type)
     "typing-extensions < 5", # using modern typing features in older python versions
 ]
+version = "0.5.2"
 
 [project.urls]
 Documentation = "https://github.com/educationwarehouse/ewok#readme"
 Issues = "https://github.com/educationwarehouse/ewok/issues"
 Source = "https://github.com/educationwarehouse/ewok"
 
-[tool.hatch.version]
-path = "src/ewok/__about__.py"
+[tool.vommit]
+allow_breaking_bang = true
+allow_breaking_footer = true
+prerelease_token = "beta"
+confirm = true
 
-[tool.semantic_release]
+[tool.vommit.git]
+enabled = true
+origin = "origin"
 branch = "master"
-version_variable = "src/ewok/__about__.py:__version__"
-change_log = "CHANGELOG.md"
-upload_to_repository = false
-upload_to_release = false
-build_command = "uv build"
+on_wrong_branch = "error"
+tag_format = "v{version}"
+commit_format = "{version}"
+
+[tool.vommit.changelog]
+enabled = true
+file = "CHANGELOG.md"
+include_prereleases = false
+placeholder = "<!--next-version-placeholder-->"
+placeholder_regex = "<auto>"
+entry_title_format = "## v{version} ({date:%Y-%m-%d})"
+
+[tool.vommit.changelog.levels]
+feat = "Feature{s}"
+fix = "Fix{es}"
+break = "Breaking Change{s}"
+docs = "Documentation"
+perf = "Performance"
+
+[tool.vommit.pypi]
+enabled = true
+use_keyring = true
+
+[tool.vommit.commands]
+clean = "rm -rf ./dist"
+build = "uv build"
+publish = "uv publish"
+post_publish = ""
+
+[tool.vommit.version_bump_map]
+break = "major"
+feat = "minor"
+fix = "patch"
+perf = "patch"
 
 [tool.ruff]
 target-version = "py312"
