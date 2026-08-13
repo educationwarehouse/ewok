@@ -134,6 +134,13 @@ def include_other_project_tasks(collection: Collection) -> None:
         namespace = file.stem.split(".")[0]
 
         if plugin_collection := collection_from_abs_path(str(file), namespace, plugin_type="local"):
+            transformed_namespace = collection.transform(namespace)
+            if transformed_namespace in collection.collections:
+                cprint(
+                    f"WARN: namespace '{transformed_namespace}' is already defined; '{file.name}' overrides it.",
+                    color="yellow",
+                    file=sys.stderr,
+                )
             collection.add_collection(plugin_collection, namespace)
 
 
